@@ -30,36 +30,33 @@ from pytorch3d.structures import join_meshes_as_scene, Meshes
 from pytorch3d.io import IO, load_obj, load_objs_as_meshes, save_obj
 from PIL import Image
 import os
+from plot_image_grid import image_grid
+
+cosine_sim = torch.nn.CosineSimilarity()
+
+def cosine_avg(features, targets):
+    return -cosine_sim(features, targets).mean()
 
 mesh_path = os.path.join("data", 'playcard', 'playcard.obj')
 img_path = os.path.join("data", 'playcard', 'playcard_texture_kd.png')
 
-m = trimesh.load(mesh_path)
-im = Image.open(img_path)
+# m = trimesh.load(mesh_path)
+# im = Image.open(img_path)
 
-material = trimesh.visual.texture.SimpleMaterial(image=im)
-color_visuals = trimesh.visual.TextureVisuals(uv=m.visual.uv, image=im, material=material)
-mesh = trimesh.Trimesh(vertices=m.vertices, faces=m.faces, visual=color_visuals, validate=True, process=False)
-mesh.export(mesh_path)
+# material = trimesh.visual.texture.SimpleMaterial(image=im)
+# color_visuals = trimesh.visual.TextureVisuals(uv=m.visual.uv, image=im, material=material)
+# mesh = trimesh.Trimesh(vertices=m.vertices, faces=m.faces, visual=color_visuals, validate=True, process=False)
+# mesh.export(mesh_path)
 
 
 mesh_A = load_objs_as_meshes(["data/playcard/playcard.obj"])
 mesh_B = load_objs_as_meshes(["data/face/face.obj"])
-meshes_list = [mesh_A, mesh_B] #"data/playcard/playcard.obj"]
-
-print(mesh_A.verts_list()[0])
-mesh_A.verts_list()[0] +=  torch.Tensor([3,0,0])
-print(mesh_A.verts_list()[0])
-
-meshes = join_meshes_as_scene(meshes_list)
-
-device = 0
 
 R, T = look_at_view_transform(8.0, 45.0, 180) 
 cameras = FoVPerspectiveCameras(R=R, T=T)
 
 raster_settings = RasterizationSettings(
-    image_size=512, 
+    image_size=224, 
     blur_radius=0.0, 
     faces_per_pixel=1, 
 )
@@ -79,35 +76,52 @@ renderer = MeshRenderer(
     )
 )
 
-images = renderer(meshes)
-plt.figure(figsize=(10, 10))
-plt.imsave( "test.png", images[0, ..., :3].cpu().numpy())
-plt.axis("off");
+# num_views = 5
+# meshes = meshes.extend(num_views)
+# target_images = renderer(meshes, cameras=cameras, lights=lights)
 
-
-# add path for demo utils functions 
-import sys
-import os
-sys.path.append(os.path.abspath(''))
+###### clip #####
 
 # モデルの読み込み
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(device)
+# print(device)
 model, preprocess = clip.load("ViT-B/32", device=device)
 
-# # 画像とテキストの準備
+text = clip.tokenize(["a face with a silkhut"]).to(device)
 
-image = preprocess(Image.open("test.png")).unsqueeze(0).to(device)
-text = clip.tokenize(["a man", "a dog", "a cat"]).to(device)
+offset_trans = torch.zeros((1,3), requires_grad=True)
+optimizer = torch.optim.SGD([offset_trans], lr=1.0, momentum=0.9)
+# optimizer = torch.optim.Adam([offset_trans], lr=0.05)
 
-with torch.no_grad():
-    # 画像とテキストのエンコード
+for i in range (100):
+
+    new_mesh_A = mesh_A.offset_verts(offset_trans.expand(mesh_A.verts_packed().shape))
+    meshes = join_meshes_as_scene([new_mesh_A, mesh_B])
+
+    image = renderer(meshes)
+    # import ipdb; ipdb.set_trace()
+
+    if(i%20==0):
+        plt.figure(figsize=(10, 10))
+        plt.imsave( "trans_images/%i.png"%i, image[0, ..., :3].detach().numpy())
+
+    image = image[:,:,:,:3] # 
+    image = image.permute(0,3,1,2).to(device) # torch.Size([1, 512, 512, 3]) -> torch.Size([1, 3, 512, 512])
+    
     image_features = model.encode_image(image)
     text_features = model.encode_text(text)
 
-    # 推論
-    logits_per_image, logits_per_text = model(image, text)
-    probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+    clip_loss = cosine_avg(image_features, text_features)
 
-# 類似率の出力
-print("Label probs:", probs)
+    # 推論
+    # logits_per_image, logits_per_text = model(image, text)
+    optimizer.zero_grad()
+    clip_loss.backward()
+    optimizer.step()
+
+    print(clip_loss, offset_trans)
+    # offset_trans += torch.Tensor((0.1, 0, 0))
+
+
+        # probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+

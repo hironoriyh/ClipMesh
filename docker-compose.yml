@@ -1,0 +1,31 @@
+version: "2"
+services:
+  app:
+    build: . 
+    #image: pynif3d:conda
+    image: clipmesh:latest
+    #image: gaetanlandreau/pytorch3d:latest
+    command: /bin/bash
+    deploy:
+      resources: 
+        reservations:
+          devices:
+            - driver: nvidia
+              # count: 1
+              capabilities: [gpu]
+              device_ids: ['2']
+
+    container_name: clipmesh_hozumi
+    user: ${CURRENT_UID}
+    volumes:
+      - /home/hyoshida:/home/hyoshida
+      - /home/hozumi:/home/hozumi:Z
+      - /etc/passwd:/etc/passwd      
+      - /etc/group:/etc/group
+    ports:
+      - "6007:6007"
+     # - "8889:8889"
+    tty: true
+    working_dir: $HOME
+    #command: tail -f /dev/null
+    stdin_open: true

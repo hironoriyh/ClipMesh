@@ -1,10 +1,9 @@
 import torch
 import clip
-from PIL import Image
+import argparse
 
-import pytorch3d as p3d
+# import pytorch3d as p3d
 import trimesh
-import torch
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +12,7 @@ from plot_image_grid import image_grid
 # Data structures and functions for rendering
 from pytorch3d.structures import Meshes
 # from pytorch3d.vis.plotly_vis import AxisArgs, plot_batch_individually, plot_scene
-from pytorch3d.vis.texture_vis import texturesuv_image_matplotlib
+# from pytorch3d.vis.texture_vis import texturesuv_image_matplotlib
 from pytorch3d.renderer import (
     look_at_view_transform,
     FoVPerspectiveCameras, 
@@ -26,14 +25,18 @@ from pytorch3d.renderer import (
     MeshRasterizer,  
     SoftPhongShader,
     TexturesUV,
-    TexturesVertex
+    TexturesVertex,
+    BlendParams,
+    hard_rgb_blend,
+    sigmoid_alpha_blend,
+    softmax_rgb_blend,
 )
+
 
 from pytorch3d.structures import join_meshes_as_scene, Meshes
 from pytorch3d.io import IO, load_obj, load_objs_as_meshes, save_obj
 from PIL import Image
 import os
-from plot_image_grid import image_grid
 import optuna
 
 torch.set_printoptions(precision=3)
@@ -61,7 +64,6 @@ def construct_renderer(batch_size = 12, device="cuda"):
     azim = torch.linspace(-90, 90, batch_size)
 
     R, T = look_at_view_transform(dist=5, elev=elev, azim=azim) #at=(0.0, 0.0, 0.0)
-    # import ipdb; ipdb.set_trace()
     # T += torch.tensor([0, 0, 0])
     # print(T)
 
@@ -76,6 +78,8 @@ def construct_renderer(batch_size = 12, device="cuda"):
     )
 
     lights = PointLights(location=[[0.0, 0.0, -3.0]], device=device)
+    
+    bp = BlendParams(sigma=1e-2, background_color=(0.5, 0.5, 0.5))
 
     renderer = MeshRenderer(
         rasterizer=MeshRasterizer(
@@ -85,7 +89,8 @@ def construct_renderer(batch_size = 12, device="cuda"):
         shader=SoftPhongShader(
             device=device, 
             cameras=cameras,
-            lights=lights
+            lights=lights,
+            blend_params=bp
         )
     )
 
@@ -93,8 +98,8 @@ def construct_renderer(batch_size = 12, device="cuda"):
 
 def construct_scene(device=device):
     ### const meshes
-    mesh_path = os.path.join("data", 'silk_hat', 'silk_hat.obj')
-    img_path = os.path.join("data", 'silk_hat', 'face_texture_kd.png')
+    # mesh_path = os.path.join("data", 'silk_hat', 'silk_hat.obj')
+    # img_path = os.path.join("data", 'silk_hat', 'face_texture_kd.png')
 
     # save_obj_trimesh(mesh_path, img_path)
     mesh_A = load_objs_as_meshes(["data/face/face.obj"], device=device) 
@@ -134,6 +139,41 @@ def objective(trial): ### for optuna
     print('iter: %i, %1.3f, %1.3f, %1.3f score: %1.3f' % (trial.number, x, y, z, score))
     return score
 
+def opt_autograd(Nitr, directory):
+    # y_value = torch.Tensor([0.0, 0.1, 0.0])
+    # import ipdb; ipdb.set_trace()
+
+    y_value = torch.tensor([0.0, 1.0, 0.0], requires_grad=True)
+    # y_value.requires_grad = True
+    # lr = 1e-2
+    # optimizer = torch.optim.Adam([y_value], lr=lr)
+
+    lr = 1.0
+    optimizer = torch.optim.SGD([y_value], lr=lr)
+
+    list_loss = []
+    y_list = []
+
+
+    for itr in range(Nitr):
+        optimizer.zero_grad()
+        trans = y_value.clone()
+        trans[0] = 0
+        trans[2] = 0
+        images= render_images(trans) 
+        loss = calc_loss(images) #
+        list_loss.append(loss.to('cpu').detach().numpy())
+        y_list.append(trans[1].to('cpu').detach().numpy())
+        print(itr, trans[1].item(), loss.item())
+        loss.backward()
+        optimizer.step()
+
+    fig = plt.figure()
+    plt.figure(figsize=(10, 10))
+    plt.scatter(y_list, list_loss)
+    plt.savefig(os.path.join(directory, "loss.png"))
+
+
 def opt_bruteforce(Nitr, directory):
 
     y_list = torch.linspace(min_y, max_y, Nitr)
@@ -171,6 +211,15 @@ def opt_bruteforce(Nitr, directory):
     plt.savefig(os.path.join(directory, "loss.png"))
 
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-bf", "--bruteforce",     help='bruteforce loss value check for comparison', action='store_true')
+parser.add_argument("-ag", "--autograd",        help='autograd optimization', action='store_true')
+parser.add_argument("-ot", "--optuna",          help='optuna optimization', action='store_true')
+parser.add_argument("--testimage", action='store_false')
+
+args = parser.parse_args()
+
 ###### clip loop #####
 
 model, preprocess = clip.load("ViT-B/32", device=device) # model = model.zero_grad() didnt work
@@ -183,31 +232,47 @@ query = "An image of a head wearing a black silk hat deeply"
 text = clip.tokenize([query]).to(device)
 
 # set render, meshes
-Nitr = 300
+Nitr = 200
 batch_size = 12
 renderer = construct_renderer(batch_size=batch_size)
 mesh_A, mesh_B = construct_scene(device=device)
 
-### opt bruteforce
-directory = os.path.join("trans_images", query.replace(" ", "_"), "bruteforce")
-os.makedirs(directory, exist_ok = True)
-opt_bruteforce(Nitr, directory)
+#### bruteforce
+if(args.bruteforce):
+    directory = os.path.join("trans_images", query.replace(" ", "_"), "bruteforce")
+    os.makedirs(directory, exist_ok = True)
+    opt_bruteforce(Nitr, directory)
+
+### optimize with autograd
+if(args.autograd):
+    directory = os.path.join("trans_images", query.replace(" ", "_"), "autograd")
+    os.makedirs(directory, exist_ok = True)
+    opt_autograd(Nitr, directory)
 
 #### optuna 
-directory = os.path.join("trans_images", query.replace(" ", "_"), "optuna")
-os.makedirs(directory, exist_ok = True)
+if(args.optuna):
+    directory = os.path.join("trans_images", query.replace(" ", "_"), "optuna")
+    os.makedirs(directory, exist_ok = True)
 
-study = optuna.create_study(direction="minimize") # 最適化処理を管理するstudyオブジェクト
-study.optimize(objective, # 目的関数
-               n_trials=Nitr # トライアル数
-              )
-# import ipdb; ipdb.set_trace()
-images = render_images(torch.tensor([study.best_params["x"], study.best_params["y"], study.best_params["z"]])) 
-image_grid(images.cpu().detach().numpy(), rows=2, cols=3, rgb=True, path=os.path.join(directory, "best_%f.png"%study.best_params["y"]))
-fig = plt.figure()
-plt.figure(figsize=(10, 10))
-plt.scatter([trial.params["y"] for trial in study.trials], [trial.value for trial in study.trials])
-plt.savefig(os.path.join(directory, "loss.png"))
+    study = optuna.create_study(direction="minimize") # 最適化処理を管理するstudyオブジェクト
+    study.optimize(objective, # 目的関数
+                n_trials=Nitr # トライアル数
+                )
+
+    images = render_images(torch.tensor([study.best_params["x"], study.best_params["y"], study.best_params["z"]])) 
+    image_grid(images.cpu().detach().numpy(), rows=2, cols=3, rgb=True, path=os.path.join(directory, "best_%f.png"%study.best_params["y"]))
+    fig = plt.figure()
+    plt.figure(figsize=(10, 10))
+    plt.scatter([trial.params["y"] for trial in study.trials], [trial.value for trial in study.trials])
+    plt.savefig(os.path.join(directory, "loss.png"))
+
+if (args.testimage ):
+    # directory = 
+    images = render_images(torch.tensor([0,0,0])) 
+    # import ipdb; ipdb.set_trace()
+    calc_loss(images)
+    # image_grid(images.cpu().detach().numpy(), rows=2, cols=3, rgb=True, path=os.path.join(directory, "best_%f.png"%study.best_params["y"]))
+
 # optuna.visualization.matplotlib.plot_optimization_history(study)
 # plt.tight_layout()
 # path = os.path.join(directory, "optuna_plot.png")

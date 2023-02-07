@@ -1,10 +1,10 @@
 version: "2"
 services:
   app:
-    build: . 
-    #image: pynif3d:conda
-    image: clipmesh:latest
-    #image: gaetanlandreau/pytorch3d:latest
+          #build: . 
+    #image: clipmesh:latest
+    image: clipmesh:conda
+
     command: /bin/bash
     deploy:
       resources: 
@@ -15,7 +15,7 @@ services:
               capabilities: [gpu]
               device_ids: ['2']
 
-    container_name: clipmesh_hozumi
+    container_name: clipmesh
     user: ${CURRENT_UID}
     volumes:
       - /home/hyoshida:/home/hyoshida
@@ -23,7 +23,7 @@ services:
       - /etc/passwd:/etc/passwd      
       - /etc/group:/etc/group
     ports:
-      - "6007:6007"
+      - "6008:6008"
      # - "8889:8889"
     tty: true
     working_dir: $HOME

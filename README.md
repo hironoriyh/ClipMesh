@@ -1,5 +1,27 @@
 ## CLIP-Mesh
 
+
+```
+source activate base
+export CUDA_HOME="/usr/local/cuda"
+```
+
+for testing translation with clip, there are three methods.
+1. bruteforce
+2. autograd
+3. optuna
+you can test them by 
+```
+python test_clip_pytorch3d.py -bf -ag -ot
+```
+
+if you find some errors regarding pytorch3d, just install pytorch3d again
+```
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+```
+
+
+<!-- 
 Official implementation of [**CLIP-Mesh: Generating textured meshes from text using pretrained image-text models**](https://www.nasir.lol/clipmesh)<br/>
 
 [Nasir Mohammad Khalid](https://www.nasir.lol/),
@@ -20,7 +42,7 @@ _[SIGGRAPH ASIA 2022]() | [arXiv](https://arxiv.org/abs/2203.13333) | [Project p
 
 |<img src="./assets/cow.gif" width="310"/>|<img src="./assets/smpl.gif" width="310"/>|
 |:-----------------------------------------------------------------------------------------------------------:|:--------------------------------------------------:|
-| [Stylizing a Mesh](https://colab.research.google.com/drive/1df5yzS2vmqyYko016tVYXYZKt2Hrmy7Q?usp=sharing)| [Apply CLIP-Mesh to Human Models](https://github.com/NasirKhalid24/CLIP-Mesh-SMPLX)|
+| [Stylizing a Mesh](https://colab.research.google.com/drive/1df5yzS2vmqyYko016tVYXYZKt2Hrmy7Q?usp=sharing)| [Apply CLIP-Mesh to Human Models](https://github.com/NasirKhalid24/CLIP-Mesh-SMPLX)| -->
 
 ## Setup
 
@@ -83,6 +105,6 @@ python main.py \
 --texture_resolution 1024
 ```
 
-## Tips, Tricks, FAQs etc
+<!-- ## Tips, Tricks, FAQs etc
 
-I recommend checking out the [following document](./assets/FAQ.md) as it could answer any doubts that come up (will be updated regularly) - if you still have questions reach out [@Nymarius_](https://twitter.com/Nymarius_) or open an issue
+I recommend checking out the [following document](./assets/FAQ.md) as it could answer any doubts that come up (will be updated regularly) - if you still have questions reach out [@Nymarius_](https://twitter.com/Nymarius_) or open an issue -->

@@ -57,9 +57,10 @@ RUN pip install opencv-python setuptools numpy PyYAML Cython
 RUN pip install black==19.3.b0 flake8-comprehensions==3.3.0 flake8-bugbear==20.1.4
 RUN pip install flake8==3.8.4 isort==4.3.21 m2r2 mccabe==0.6.1 mock sphinx
 RUN pip install sphinx_markdown_tables sphinx_rtd_theme argparse tqdm tensorboard
-#RUN pip install open3d trimesh pymcubes
+RUN pip install open3d trimesh pymcubes
 RUN pip install ipdb
-
+RUN pip install optuna
+RUN pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 
 # Install the remaining dependencies.
 
@@ -124,14 +125,13 @@ COPY ./nvdiffrast/setup.py /tmp/pip/
 
 RUN cd /tmp/pip && pip install .
 
-##
+RUN apt-get update && \
+    apt-get install -y tmux
 
-##
-
-
-
+ENV CUDA_HOME /usr/local/cuda
+SHELL ["/bin/bash", "-c"]
 # Create a new user.
-RUN useradd -ms /bin/bash cai
+# RUN useradd -ms /bin/bash cai
 # Copy the contents of the local directory to the working directory.
 
 #USER root

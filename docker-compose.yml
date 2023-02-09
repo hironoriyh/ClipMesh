@@ -1,8 +1,6 @@
 version: "2"
 services:
   app:
-          #build: . 
-    #image: clipmesh:latest
     image: clipmesh:conda
 
     command: /bin/bash
@@ -13,18 +11,16 @@ services:
             - driver: nvidia
               # count: 1
               capabilities: [gpu]
-              device_ids: ['2']
+              device_ids: ['1']
 
-    container_name: clipmesh
+    container_name: clipmesh_${CURRENT_UID}
     user: ${CURRENT_UID}
     volumes:
-      - /home/hyoshida:/home/hyoshida
-      - /home/hozumi:/home/hozumi:Z
+      - /home/${CURRENT_UID}:/home/${CURRENT_UID}
       - /etc/passwd:/etc/passwd      
       - /etc/group:/etc/group
     ports:
-      - "6008:6008"
-     # - "8889:8889"
+      - "8888:8888"
     tty: true
     working_dir: $HOME
     #command: tail -f /dev/null

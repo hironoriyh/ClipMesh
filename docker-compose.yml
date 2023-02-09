@@ -13,10 +13,10 @@ services:
               capabilities: [gpu]
               device_ids: ['1']
 
-    container_name: clipmesh_${CURRENT_UID}
-    user: ${CURRENT_UID}
+    container_name: clipmesh_${USER}
+    user: ${USER}
     volumes:
-      - /home/${CURRENT_UID}:/home/${CURRENT_UID}
+      - /home/${USER}:/home/${USER}
       - /etc/passwd:/etc/passwd      
       - /etc/group:/etc/group
     ports:

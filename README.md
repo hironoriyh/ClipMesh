@@ -1,6 +1,21 @@
 ## CLIP-Mesh
 
 
+
+## Setup
+
+Clone this repository recursively to get all submodules - use submodule update to get downstream submodules
+
+```
+git clone --recurse-submodules https://github.com/NasirKhalid24/CLIP-Mesh.git
+cd CLIP-Mesh
+git submodule update --init --recursive
+```
+
+```
+ CURRENT_UID=$(id -u):$(id -g) docker-compose up -d
+```
+
 ```
 source activate base
 export CUDA_HOME="/usr/local/cuda"
@@ -44,6 +59,8 @@ _[SIGGRAPH ASIA 2022]() | [arXiv](https://arxiv.org/abs/2203.13333) | [Project p
 |:-----------------------------------------------------------------------------------------------------------:|:--------------------------------------------------:|
 | [Stylizing a Mesh](https://colab.research.google.com/drive/1df5yzS2vmqyYko016tVYXYZKt2Hrmy7Q?usp=sharing)| [Apply CLIP-Mesh to Human Models](https://github.com/NasirKhalid24/CLIP-Mesh-SMPLX)| -->
 
+
+<!--
 ## Setup
 
 Clone this repository recursively to get all submodules - use submodule update to get downstream submodules
@@ -52,6 +69,10 @@ Clone this repository recursively to get all submodules - use submodule update t
 git clone --recurse-submodules https://github.com/NasirKhalid24/CLIP-Mesh.git
 cd CLIP-Mesh
 git submodule update --init --recursive
+```
+
+```
+ CURRENT_UID=$(id -u):$(id -g) docker-compose up -d
 ```
 
 Setup Conda environment and install packages
@@ -65,46 +86,5 @@ pip install -r requirements.txt
 ```
 
 Install loop subdivison code and DALLE-2 (not that DALLE-2 is from an earlier commit so existing install may not work)
+-->
 
-```
-<!-- Install Loop Subdivision -->
-cd loop_limitation
-pip install .
-cd ..
-
-<!-- Install DALLE2 - Diffusion Prior -->
-cd DALLE2-pytorch
-pip install .
-cd ..
-
-<!-- Get DALLE2 Prior Weights -->
-mkdir weights
-wget https://huggingface.co/spaces/NasirKhalid24/Dalle2-Diffusion-Prior/resolve/main/larger-model.pth -O ./weights/model.pth
-```
-
-## Usage
-
-This repo comes with some configs that are passed to ```main.py``` using the ```--config``` flag
-
-Any of the config paramaters can be overriden by passing them to as arguments to the ```main.py``` file so you can have a base .yml file with all your parameters and just update the text prompt to generate something new
-
-An example would be using the given config file for single mesh generation ```single.yml```
-
-```
-# Use all parameters in file
-python main.py --config configs/single.yml      
-
-# Use all parameters in file but change text prompt
-python main.py --config configs/single.yml  --text_prompt "a hamburger"    
-
-# Use all parameters in file but change text prompt, batch, texture resolution
-python main.py \
---config configs/single.yml \
---text_prompt "a hamburger" \
---batch_size 5 \
---texture_resolution 1024
-```
-
-<!-- ## Tips, Tricks, FAQs etc
-
-I recommend checking out the [following document](./assets/FAQ.md) as it could answer any doubts that come up (will be updated regularly) - if you still have questions reach out [@Nymarius_](https://twitter.com/Nymarius_) or open an issue -->

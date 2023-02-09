@@ -18,8 +18,33 @@ git submodule update --init --recursive
 
 ```
 source activate base
-export CUDA_HOME="/usr/local/cuda"
+CUDA_HOME="/usr/local/cuda"
 ```
+
+```
+
+<!-- Install Loop Subdivision -->
+cd loop_limitation
+pip install .
+cd ..
+
+<!-- Install DALLE2 - Diffusion Prior -->
+cd DALLE2-pytorch
+pip install .
+cd ..
+
+<!-- Get DALLE2 Prior Weights -->
+mkdir weights
+wget https://huggingface.co/spaces/NasirKhalid24/Dalle2-Diffusion-Prior/resolve/main/larger-model.pth -O ./weights/model.pth
+```
+
+for testing main.py
+
+```
+python main.py --config configs/single.yml      
+
+```
+
 
 for testing translation with clip, there are three methods.
 1. bruteforce

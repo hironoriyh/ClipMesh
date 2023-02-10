@@ -13,15 +13,6 @@ git submodule update --init --recursive
 ```
 
 ```
- CURRENT_UID=$(id -u):$(id -g) docker-compose up -d
-```
-
-```
-source activate base
-CUDA_HOME="/usr/local/cuda"
-```
-
-```
 
 <!-- Install Loop Subdivision -->
 cd loop_limitation
@@ -38,7 +29,26 @@ mkdir weights
 wget https://huggingface.co/spaces/NasirKhalid24/Dalle2-Diffusion-Prior/resolve/main/larger-model.pth -O ./weights/model.pth
 ```
 
-for testing main.py
+## launch the container
+
+lauching by the command below. 
+```
+ CURRENT_UID=$(id -u):$(id -g) docker-compose up -d
+```
+
+then get in the container
+
+```
+docker exec -it <container_name> bash
+```
+
+then inside the container, run the following commands
+```
+source activate base
+CUDA_HOME="/usr/local/cuda"
+```
+
+##  for testing main.py
 
 ```
 python main.py --config configs/single.yml      
@@ -46,6 +56,7 @@ python main.py --config configs/single.yml
 ```
 
 
+## for testing translation 
 for testing translation with clip, there are three methods.
 1. bruteforce
 2. autograd
@@ -54,6 +65,8 @@ you can test them by
 ```
 python test_clip_pytorch3d.py -bf -ag -ot
 ```
+
+## errors
 
 if you find some errors regarding pytorch3d, just install pytorch3d again
 ```

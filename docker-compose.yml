@@ -14,7 +14,7 @@ services:
               device_ids: ['1']
 
     container_name: clipmesh_${USER}
-    user: ${USER}
+    user: ${CURRENT_UID}
     volumes:
       - /home/${USER}:/home/${USER}
       - /etc/passwd:/etc/passwd      

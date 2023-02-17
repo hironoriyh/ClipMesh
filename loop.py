@@ -115,7 +115,13 @@ def loop(cfg):
         load_mesh = obj.load_obj(m)
 
         if cfg["unit"][idx]: # If mesh is to be unit sized
-            load_mesh = mesh.unit_size(load_mesh)
+            # import ipdb; ipdb.set_trace()
+            try:
+                load_mesh = mesh.unit_size(load_mesh)
+            except:
+                from nvdiffmodeling.src import mesh
+                load_mesh = mesh.unit_size(load_mesh)
+
 
         # Scale vertices by factors provided and then offset by offsets provided
         v_pos = torch.tensor(cfg["scales"][idx]).to(load_mesh.v_pos.device) * load_mesh.v_pos.clone().detach()
@@ -241,7 +247,7 @@ def loop(cfg):
             
             # Limit subdivide vertices if needed
             if subdiv[i] != None:
-
+                print("limit subdiv",i, subdiv[i] )
                 n_vert = subdiv[i].get_limit(
                     m.v_pos.to('cpu').double()
                 ).to(device)
@@ -540,6 +546,7 @@ def loop(cfg):
     
     video.close()
 
+    import trimesh
     for idx, m in enumerate(render_meshes):
         out_path = os.path.join( cfg["path"], "meshes", "mesh_%d" % idx )
         os.makedirs(out_path)
@@ -548,5 +555,14 @@ def loop(cfg):
             out_path,
             m
         )
+
+        m_ = trimesh.load(os.path.join(out_path, ".obj"))
+
+        im_ = Image.open(os.path.join(out_path, 'texture_kd.png'))
+
+        material = trimesh.visual.texture.SimpleMaterial(image=im_)
+        color_visuals = trimesh.visual.TextureVisuals(uv=m_.visual.uv, image=im_, material=material)
+        mesh = trimesh.Trimesh(vertices=m.vertices, faces=m_.faces, visual=color_visuals, validate=True, process=False)
+
 
     return cfg["path"]

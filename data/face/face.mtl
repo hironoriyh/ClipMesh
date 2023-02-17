@@ -1,0 +1,5 @@
+newmtl defaultMat
+bsdf   diffuse
+map_kd face_texture_kd.png
+map_ks face_texture_ks.png
+bump face_texture_n.png

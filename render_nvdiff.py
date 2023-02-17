@@ -152,18 +152,15 @@ def create_cams(cfg):
     return cams
 
 
-def nvdiff_rendermeshes(meshes, subdiv, cfg, vert_trains, device=0, it=0):
+def nvdiff_rendermeshes(meshes, subdiv, cfg, device=0):
 
     render_meshes = []          # store meshes with texture that will be rendered
-    render_meshes_notex = []    # store meshes without texture that will be rendered
 
     lapl_funcs    = []          # store laplacian for each mesh
 
     for i, m in enumerate(meshes):
 
     # Limit subdivide vertices if needed
-        vert_train = vert_trains[i]
-
         if subdiv[i] != None:
             n_vert = subdiv[i].get_limit(
                 m.v_pos.to('cpu').double()
@@ -212,28 +209,6 @@ def nvdiff_rendermeshes(meshes, subdiv, cfg, vert_trains, device=0, it=0):
             base=m # gets uvs etc from here
         )
 
-        if it < 2000 * cfg["shape_imgs_frac"] and vert_train:
-
-            # Initialize the no texture mesh
-            kd_notex = torch.full_like( ready_texture.data, 0.5)
-
-            if kd_notex.shape[-1] == 4:
-                kd_notex[:, :, :, 3] = 1.0
-
-            load_mesh_notex = mesh.Mesh(
-                n_vert,
-                m.t_pos_idx,
-                material={
-                    'bsdf': cfg['bsdf'],
-                    'kd': kd_notex,
-                    'ks': ready_specular,
-                    'normal': ready_normal,
-                },
-                base=m # gets uvs etc from here
-            )
-
-            render_meshes_notex.append(load_mesh_notex.eval())
-
 
         render_meshes.append(load_mesh.eval())
 
@@ -242,9 +217,9 @@ def nvdiff_rendermeshes(meshes, subdiv, cfg, vert_trains, device=0, it=0):
         else:
             lapl_funcs.append(None)
 
-    return render_meshes, render_meshes_notex, lapl_funcs
+    return render_meshes, lapl_funcs
 
-def const_scene_camparams(render_meshes, render_meshes_notex, cams, glctx, vert_train=True, device=0, it=0):
+def const_scene_camparams(render_meshes, cams, device=0, ):
 
     # Create a scene with the textures and another without textures
     complete_scene = create_scene(render_meshes, sz=cfg["texture_resolution"])
@@ -252,129 +227,46 @@ def const_scene_camparams(render_meshes, render_meshes_notex, cams, glctx, vert_
     complete_scene = mesh.compute_tangents(complete_scene)
 
 
-    if it < 2000 * cfg["shape_imgs_frac"] and vert_train:
-        complete_scene_notex = create_scene(render_meshes_notex, sz=cfg["texture_resolution"])
-        complete_scene_notex = mesh.auto_normals(complete_scene_notex)
-        complete_scene_notex = mesh.compute_tangents(complete_scene_notex)
-
-
-    # rot_ang = 0.0
-
-    # with torch.no_grad():
-        
-    #     params = get_camera_params(
-    #         30.0, #cfg["log_elev"],
-    #         rot_ang,
-    #         10.0, #"cfg["log_dist"],
-    #         512, #cfg["log_res"],
-    #         60.0, #cfg["log_fov"]
-    #     )
-
-    #     rot_ang += 1
-
-    #     log_image = render.render_mesh(
-    #         glctx,
-    #         complete_scene.eval(params),
-    #         params['mvp'],
-    #         params['campos'],
-    #         params['lightpos'],
-    #         3.0, #cfg["log_light_power"],
-    #         512, #cfg["log_res"],
-    #         2, #num_layers=cfg["layers"],
-    #         background=torch.ones(1, cfg["log_res"], cfg["log_res"], 3).to(device)
-    #     )
-
     # Render scene for training
     params_camera = next(iter(cams))
     # print("print cams", cams.shape)
 
+    # broadcast the first pose
     params_camera["campos"][:,] = params_camera["campos"][0]
-    print(params_camera["campos"])
+    # print(params_camera["campos"])
 
     for key in params_camera:
         params_camera[key] = params_camera[key].to(device)
 
-    return complete_scene, complete_scene_notex, params_camera
+    return complete_scene, params_camera
 
     # return params_camera
 
-def const_trainrender(complete_scene, complete_scene_notex, params_camera, cfg, glctx, vert_train=False, it=0):
+def const_trainrender(complete_scene, params_camera, cfg, glctx):
 
-    # Render with and without texture to enable shape growth
-    if it < cfg["epochs"] * cfg["shape_imgs_frac"] and vert_train:
-        
-        with_tex = cfg["batch_size"] // 2
-
-        with_tex_params = {
-            'mvp': params_camera['mvp'][:with_tex],
-            'lightpos': params_camera['lightpos'][:with_tex],
-            'campos': params_camera['campos'][:with_tex],
-            'resolution': [cfg["train_res"], cfg["train_res"]]
-        }
-
-        no_tex_params = {
-            'mvp': params_camera['mvp'][with_tex:],
-            'lightpos': params_camera['lightpos'][with_tex:],
-            'campos': params_camera['campos'][with_tex:],
-            'resolution': [cfg["train_res"], cfg["train_res"]]
-        }
-
-        with_tex_train_render = render.render_mesh(
-            glctx,
-            complete_scene.eval(with_tex_params),
-            with_tex_params["mvp"],
-            with_tex_params["campos"],
-            with_tex_params["lightpos"],
-            cfg["light_power"],
-            cfg["train_res"],
-            spp=1, # no upscale here / render at any resolution then use resize_right to downscale
-            num_layers=cfg["layers"],
-            msaa=False,
-            background=params_camera["bkgs"][:with_tex],
-        ).permute(0, 3, 1, 2) # switch to B, C, H, W
-
-        no_tex_train_render = render.render_mesh(
-            glctx,
-            complete_scene_notex.eval(no_tex_params),
-            no_tex_params["mvp"],
-            no_tex_params["campos"],
-            no_tex_params["lightpos"],
-            cfg["light_power"],
-            cfg["train_res"],
-            spp=1, # no upscale here / render at any resolution then use resize_right to downscale
-            num_layers=1,
-            msaa=False,
-            background=params_camera["bkgs"][with_tex:],
-        ).permute(0, 3, 1, 2) # switch to B, C, H, W
-
-        train_render = torch.cat([
-            with_tex_train_render,
-            no_tex_train_render
-        ])
 
     # Render with only textured meshes
-    else:
 
-        params = {
-            'mvp': params_camera['mvp'],
-            'lightpos': params_camera['lightpos'],
-            'campos': params_camera['campos'],
-            'resolution': [cfg["train_res"], cfg["train_res"]]
-        }
+    params = {
+        'mvp': params_camera['mvp'],
+        'lightpos': params_camera['lightpos'],
+        'campos': params_camera['campos'],
+        'resolution': [cfg["train_res"], cfg["train_res"]]
+    }
 
-        train_render = render.render_mesh(
-            glctx,
-            complete_scene.eval(params),
-            params["mvp"],
-            params["campos"],
-            params["lightpos"],
-            cfg["light_power"],
-            cfg["train_res"],
-            spp=1, # no upscale here / render at any resolution then use resize_right to downscale
-            num_layers=cfg["layers"],
-            msaa=False,
-            background=params_camera["bkgs"],
-        ).permute(0, 3, 1, 2) # switch to B, C, H, W
+    train_render = render.render_mesh(
+        glctx,
+        complete_scene.eval(params),
+        params["mvp"],
+        params["campos"],
+        params["lightpos"],
+        cfg["light_power"],
+        cfg["train_res"],
+        spp=1, # no upscale here / render at any resolution then use resize_right to downscale
+        num_layers=cfg["layers"],
+        msaa=False,
+        background=params_camera["bkgs"],
+    ).permute(0, 3, 1, 2) # switch to B, C, H, W
 
     if cfg["resize_method"] == "cubic":
 
@@ -410,12 +302,12 @@ def const_cfg():
             # Camera Parameters
             "fov_min": 89.0,             # Minimum camera field of view angle during renders 
             "fov_max": 90.0, #90.0,            # Maximum camera field of view angle during renders 
-            "dist_min": 4.9,            # Minimum distance of camera from mesh during renders
+            "dist_min": 5.0,            # Minimum distance of camera from mesh during renders
             "dist_max": 5.0, #5.0,            # Maximum distance of camera from mesh during renders
             "light_power": 5.0,         # Light intensity
             "elev_alpha": 1.0,          # Alpha parameter for Beta distribution for elevation sampling
             "elev_beta": 0.01, #5.0,           # Beta parameter for Beta distribution for elevation sampling
-            "elev_max": 45.0,           # Maximum elevation angle
+            "elev_max": 10.0,           # Maximum elevation angle
             "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
             "azim_max": 0.0,          # Maximum azimuth angle
             "aug_loc": "false",            # Offset mesh from center of image?
@@ -427,7 +319,7 @@ def const_cfg():
                 ["verts", "texture", "normal", "true"], 
                 ["verts", "texture", "normal", "true"]],
             "scales": [1.0, 1.0],
-            "offsets": [[0.0, 1.0, 0.0],[0.0, -1.0, 0.0] ],
+            "offsets": [[0.0, -1.0, 0.0],[0.0, 1.0, 0.0] ],
 
 
         }
@@ -447,13 +339,13 @@ cfg = const_cfg()
 meshes, subdiv, train_params, vert_trains = nvdiff_meshes(meshes_pathes, cfg)
 cams = create_cams(cfg)
 
-render_meshes,  render_meshes_notex, lapl_funcs =  nvdiff_rendermeshes(meshes, subdiv, cfg, vert_trains)
+render_meshes, lapl_funcs =  nvdiff_rendermeshes(meshes, subdiv, cfg)
 
-complete_scene, complete_scene_notex, params_camera  = const_scene_camparams(render_meshes, render_meshes_notex, cams, glctx, vert_train=True,)
+complete_scene, params_camera  = const_scene_camparams(render_meshes, cams)
 
 # import ipdb; ipdb.set_trace()
 
-train_render = const_trainrender(complete_scene, complete_scene_notex, params_camera, cfg, glctx, vert_train=False, it=0)
+train_render = const_trainrender(complete_scene, params_camera, cfg, glctx)
 
 s_log = train_render[torch.randint(low=0, high=cfg["batch_size"], size=(5 if cfg["batch_size"] > 5 else cfg["batch_size"], )) , :, :, :]
 s_log = torchvision.utils.make_grid(s_log)

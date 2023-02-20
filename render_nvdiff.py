@@ -21,7 +21,7 @@ import nvdiffrast.torch as dr
 
 
 
-def nvdiff_meshes(meshes_pathes, cfg, device=0):
+def nvdiff_meshes(cfg, device=0):
 
     # store Mesh objects
     # meshes=["/home/hyoshida/git/CLIP-Mesh/primitives/spot.obj"]
@@ -30,7 +30,7 @@ def nvdiff_meshes(meshes_pathes, cfg, device=0):
     train_params = [] # store all trainable paramters
     vert_trains = []
 
-    for idx, m in enumerate(meshes_pathes): 
+    for idx, m in enumerate(cfg["meshes"]): 
         # os.path.dirname(meshes_pathes[0]) 
         load_mesh = obj.load_obj(m)
 
@@ -242,10 +242,10 @@ def const_scene_camparams(render_meshes, cams, device=0, ):
 
     # return params_camera
 
-def const_trainrender(complete_scene, params_camera, cfg, glctx):
-
+def const_trainrender(complete_scene, params_camera, cfg):
 
     # Render with only textured meshes
+    glctx = dr.RasterizeGLContext()
 
     params = {
         'mvp': params_camera['mvp'],
@@ -281,13 +281,13 @@ def const_trainrender(complete_scene, params_camera, cfg, glctx):
     return train_render
 
 
-def const_cfg():
+def const_cfg(offset=[0,0,0]):
         
 
     cfg = {
             # Parameters
             "epochs": 2000,
-            "batch_size": 10,
+            "batch_size": 12,
             "train_res": 356, 
             "resize_method": "cubic", 
             "bsdf": "diffuse", 
@@ -312,14 +312,19 @@ def const_cfg():
             "azim_max": 0.0,          # Maximum azimuth angle
             "aug_loc": "false",            # Offset mesh from center of image?
             
-            # "meshes": "primitives/spot.obj"
+            "meshes": [
+                "/home/hyoshida/git/CLIP-Mesh/data/face/face.obj", 
+                "/home/hyoshida/git/CLIP-Mesh/data/silk_hat/silk_hat.obj"] ,
 
             "unit": "true",
             "train_mesh_idx": [
-                ["verts", "texture", "normal", "true"], 
-                ["verts", "texture", "normal", "true"]],
+                # ["verts", "texture", "normal", "false"], 
+                # ["verts", "texture", "normal", "false"]
+                ["texture", "normal", "true"], 
+                ["texture", "normal", "true"],
+                ],
             "scales": [1.0, 1.0],
-            "offsets": [[0.0, -1.0, 0.0],[0.0, 1.0, 0.0] ],
+            "offsets": [[0.0, -1.0, 0.0], offset],
 
 
         }
@@ -328,24 +333,20 @@ def const_cfg():
 
 
 
-meshes_pathes = ["/home/hyoshida/git/CLIP-Mesh/data/face/face.obj", 
-    "/home/hyoshida/git/CLIP-Mesh/data/silk_hat/silk_hat.obj"] 
-
-glctx = dr.RasterizeGLContext()
-
 cfg = const_cfg()
 
 
-meshes, subdiv, train_params, vert_trains = nvdiff_meshes(meshes_pathes, cfg)
+meshes, subdiv, _, _ = nvdiff_meshes(cfg)
 cams = create_cams(cfg)
 
-render_meshes, lapl_funcs =  nvdiff_rendermeshes(meshes, subdiv, cfg)
 
-complete_scene, params_camera  = const_scene_camparams(render_meshes, cams)
+render_meshes, _ =  nvdiff_rendermeshes(meshes, subdiv, cfg)
 
 # import ipdb; ipdb.set_trace()
 
-train_render = const_trainrender(complete_scene, params_camera, cfg, glctx)
+complete_scene, params_camera  = const_scene_camparams(render_meshes, cams)
+
+train_render = const_trainrender(complete_scene, params_camera, cfg)
 
 s_log = train_render[torch.randint(low=0, high=cfg["batch_size"], size=(5 if cfg["batch_size"] > 5 else cfg["batch_size"], )) , :, :, :]
 s_log = torchvision.utils.make_grid(s_log)

@@ -146,8 +146,11 @@ def opt_autograd(Nitr, directory):
         optimizer.step()
 
         if(itr%int(Nitr/10)==0):
-            saveimgs(images, imgpath=os.path.join(directory, "%i_loss%f.png"%(itr, loss.to('cpu').detach().numpy() )))
+            saveimgs(images, imgpath=os.path.join(directory, "%i.png"%itr))
+            # saveimgs(images, imgpath=os.path.join(directory, "%i_loss%f.png"%(itr, loss.to('cpu').detach().numpy() )))
 
+    # save the best value
+    saveimgs(images, imgpath=os.path.join(directory, "best_%0.4f.png"%loss.to('cpu').detach().numpy() ))
     fig = plt.figure()
     plt.figure(figsize=(10, 10))
     plt.scatter(y_list, list_loss)
@@ -168,7 +171,7 @@ def optuna_objective(trial): ### for optuna
     score = calc_loss(images)    
 
     if(trial.number%int(Nitr/10)==0):
-        saveimgs(images, imgpath=os.path.join(directory, "%i_loss%0.4f.png"%(trial.number, score)))
+        saveimgs(images, imgpath=os.path.join(directory, "%i.png"%trial.number))
 
     print('iter: %i, %1.3f, %1.3f, %1.3f score: %1.3f' % (trial.number, x, y, z, score))
     return score

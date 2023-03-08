@@ -1,9 +1,10 @@
 version: "2"
 services:
   app:
-    image: clipmesh:conda
+    image: clipmesh:nvidia #conda
 
     command: /bin/bash
+    #command: bash -c 'source activate base && CUDA_HOME=/usr/local/cuda-11.3'
     deploy:
       resources: 
         reservations:
@@ -19,8 +20,8 @@ services:
       - /home/${USER}:/home/${USER}
       - /etc/passwd:/etc/passwd      
       - /etc/group:/etc/group
-    ports:
-      - "8888:8888"
+#    ports:
+#      - "8888:8888"
     tty: true
     working_dir: $HOME
     #command: tail -f /dev/null

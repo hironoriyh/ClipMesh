@@ -4,7 +4,6 @@ cython
 imageio-ffmpeg
 kornia
 numpy
-nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast.git@78528e683210dfaa1be57e3c65aa37d3b36c6644
 Pillow
 PyGLM
 resize-right
@@ -13,4 +12,5 @@ smplx
 tqdm
 Ninja
 pyyaml
+trimesh
 matplotlib>=3.3.0

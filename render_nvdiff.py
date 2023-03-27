@@ -313,8 +313,8 @@ def const_cfg(offset=[0,0,0]):
             "aug_loc": "false",            # Offset mesh from center of image?
             
             "meshes": [
-                "/home/hyoshida/git/CLIP-Mesh/data/face/face.obj", 
-                "/home/hyoshida/git/CLIP-Mesh/data/silk_hat/silk_hat.obj"] ,
+                "/home/itoh/ClipMesh/data/face/face.obj", 
+                "/home/itoh/ClipMesh/data/silk_hat/silk_hat.obj"] ,
 
             "unit": "true",
             "train_mesh_idx": [

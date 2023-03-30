@@ -63,7 +63,7 @@ for testing translation with clip, there are three methods.
 3. optuna
 you can test them by 
 ```
-python test_clip_pytorch3d.py -bf -ag -ot
+python optim_translate.py -bf -ag -ot
 ```
 
 ## errors

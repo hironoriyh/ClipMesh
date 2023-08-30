@@ -313,8 +313,8 @@ def const_cfg(offset=[0,0,0]):
             "aug_loc": "false",            # Offset mesh from center of image?
             
             "meshes": [
-                "/home/itoh/ClipMesh/data/face/face.obj", 
-                "/home/itoh/ClipMesh/data/silk_hat/silk_hat.obj"] ,
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene17_leg.obj", 
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/p_chair_separate_f_legs.obj"] ,
 
             "unit": "true",
             "train_mesh_idx": [
@@ -331,10 +331,61 @@ def const_cfg(offset=[0,0,0]):
 
     return cfg
 
+def const_cfg_batch1(offset=[0,0,0]):
+        
+
+    cfg = {
+            # Parameters
+            "epochs": 2000,
+            "batch_size": 1,
+            "train_res": 356, 
+            "resize_method": "cubic", 
+            "bsdf": "diffuse", 
+            "texture_resolution": 512, 
+            "kernel_size": 7,
+            "blur_sigma": 3,
+            "shape_imgs_frac": 0.5 ,
+            "aug_light": "true" , 
+            "aug_bkg": "true" ,
+            "layers": 2,
+
+            # Camera Parameters
+            "fov_min": 89.0,             # Minimum camera field of view angle during renders 
+            "fov_max": 90.0, #90.0,            # Maximum camera field of view angle during renders 
+            "dist_min": 5.0,            # Minimum distance of camera from mesh during renders
+            "dist_max": 5.0, #5.0,            # Maximum distance of camera from mesh during renders
+            "light_power": 5.0,         # Light intensity
+            "elev_alpha": 1.0,          # Alpha parameter for Beta distribution for elevation sampling
+            "elev_beta": 0.01, #5.0,           # Beta parameter for Beta distribution for elevation sampling
+            "elev_max": 10.0,           # Maximum elevation angle
+            "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
+            "azim_max": 0.0,          # Maximum azimuth angle
+            "aug_loc": "false",            # Offset mesh from center of image?
+            
+            "meshes": [
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene17_leg.obj", 
+                "/home/itoh/ClipMesh/test_p_chair.obj"] ,
+
+            "unit": "true",
+            "train_mesh_idx": [
+                # ["verts", "texture", "normal", "false"], 
+                # ["verts", "texture", "normal", "false"]
+                ["texture", "normal", "true"], 
+                ["texture", "normal", "true"],
+                ],
+            "scales": [1.0, 1.0],
+            "offsets": [[0.0, -1.0, 0.0], offset],
 
 
-cfg = const_cfg()
+        }
 
+    return cfg
+
+# meshの位置調整
+offset = [0.0, 0.0, 0.0]
+
+# cfgを定義
+cfg = const_cfg(offset=offset)
 
 meshes, subdiv, _, _ = nvdiff_meshes(cfg)
 cams = create_cams(cfg)

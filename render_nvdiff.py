@@ -38,7 +38,7 @@ def nvdiff_meshes(cfg, device=0):
             try:
                 load_mesh = mesh.unit_size(load_mesh)
             except:
-                from nvdiffmodeling.src import mesh
+                # from nvdiffmodeling.src import mesh
                 load_mesh = mesh.unit_size(load_mesh)
 
         v_pos = torch.tensor(cfg["scales"][idx]).to(load_mesh.v_pos.device) * load_mesh.v_pos.clone().detach()
@@ -280,6 +280,45 @@ def const_trainrender(complete_scene, params_camera, cfg):
 
     return train_render
 
+def const_trainrender1(complete_scene, params_camera, cfg):
+    # Render with only textured meshes
+    glctx = dr.RasterizeGLContext()
+
+    params = {
+        'mvp': params_camera['mvp'],
+        'lightpos': params_camera['lightpos'],
+        'campos': params_camera['campos'],
+        'resolution': [cfg["train_res"], cfg["train_res"]]
+    }
+
+    train_render = render.render_mesh(
+        glctx,
+        complete_scene.eval(params),
+        params["mvp"],
+        params["campos"],
+        params["lightpos"],
+        cfg["light_power"],
+        cfg["train_res"],
+        spp=1,  # no upscale here / render at any resolution then use resize_right to downscale
+        num_layers=cfg["layers"],
+        msaa=False,
+        background=params_camera["bkgs"],
+    ).permute(0, 3, 1, 2)  # switch to B, C, H, W
+
+    if cfg["resize_method"] == "cubic":
+        train_render = resize(
+            train_render,
+            out_shape=(224, 224),  # resize to clip
+            interp_method=cubic
+        )
+    
+    # Render with only textured meshes
+    # 修正: 単一のレンダリング画像を取得
+    single_render = train_render[0]  # 最初の画像を選択
+
+    return single_render
+
+
 
 def const_cfg(offset=[0,0,0]):
         
@@ -302,21 +341,85 @@ def const_cfg(offset=[0,0,0]):
             # Camera Parameters
             "fov_min": 89.0,             # Minimum camera field of view angle during renders 
             "fov_max": 90.0, #90.0,            # Maximum camera field of view angle during renders 
-            "dist_min": 5.0,            # Minimum distance of camera from mesh during renders
+            "dist_min": 5.0,  #5.0          # Minimum distance of camera from mesh during renders
             "dist_max": 5.0, #5.0,            # Maximum distance of camera from mesh during renders
             "light_power": 5.0,         # Light intensity
             "elev_alpha": 1.0,          # Alpha parameter for Beta distribution for elevation sampling
             "elev_beta": 0.01, #5.0,           # Beta parameter for Beta distribution for elevation sampling
             "elev_max": 10.0,           # Maximum elevation angle
-            "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
-            "azim_max": 0.0,          # Maximum azimuth angle
+            # "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
+            # "azim_max": 0.0,          # Maximum azimuth angle
+            "azim_min": -90.0, #-360.0,         # Minimum azimuth angle
+            "azim_max": 90.0,          # Maximum azimuth angle
             "aug_loc": "false",            # Offset mesh from center of image?
             
             "meshes": [
-                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene17_leg.obj", 
-                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/p_chair_separate_f_legs.obj"] ,
+                # "/home/itoh/ClipMesh/blue_no_seat.obj", 
+                # "/home/itoh/ClipMesh/blue_no_lega.obj"] ,
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene_21_other_leg.obj", 
+                "/home/itoh/ClipMesh/test_p_chair.obj"] ,
 
             "unit": "true",
+            # "unit": "false",
+            "train_mesh_idx": [
+                # ["verts", "texture", "normal", "false"], 
+                # ["verts", "texture", "normal", "false"]
+                ["texture", "normal", "true"], 
+                ["texture", "normal", "true"],
+                ],
+            "scales": [1.0, 1.0],
+            "offsets": [[0.0, -1.0, 0.0], offset],
+
+
+        }
+
+    return cfg
+
+def const_cfg1(offset=[0,0,0]):
+        
+
+    cfg = {
+            # Parameters
+            "epochs": 2000,
+            "batch_size": 1,
+            "train_res": 356, 
+            "resize_method": "cubic", 
+            "bsdf": "diffuse", 
+            "texture_resolution": 512, 
+            "kernel_size": 7,
+            "blur_sigma": 3,
+            "shape_imgs_frac": 0.5 ,
+            # "aug_light": "true" , 
+            # "aug_bkg": "true" ,
+            "aug_light": False , 
+            "aug_bkg": False ,
+            "layers": 2,
+
+            # Camera Parameters
+            "fov_min": 90.0,             # Minimum camera field of view angle during renders 
+            "fov_max": 90.0, #90.0,            # Maximum camera field of view angle during renders 
+            "dist_min": 5.0,  #5.0          # Minimum distance of camera from mesh during renders
+            "dist_max": 5.0, #5.0,            # Maximum distance of camera from mesh during renders
+            "light_power": 5.0,         # Light intensity
+            "elev_alpha": 1.0,          # Alpha parameter for Beta distribution for elevation sampling
+            "elev_beta": 1.0, #5.0,           # Beta parameter for Beta distribution for elevation sampling
+            "elev_max": 1.0,           # Maximum elevation angle
+            # "elev_max": 10.0,           # Maximum elevation angle
+            "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
+            "azim_max": 0.0,          # Maximum azimuth angle
+            # "azim_min": -90.0, #-360.0,         # Minimum azimuth angle
+            # "azim_max": 90.0,          # Maximum azimuth angle
+            "aug_loc": False,            # Offset mesh from center of image?
+            # "aug_loc": 'false', 
+            
+            "meshes": [
+                # "/home/itoh/ClipMesh/blue_no_seat.obj", 
+                # "/home/itoh/ClipMesh/blue_no_lega.obj"] ,
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene_21_other_leg.obj", 
+                "/home/itoh/ClipMesh/test_p_chair.obj"] ,
+
+            "unit": "true",
+            # "unit": "false",
             "train_mesh_idx": [
                 # ["verts", "texture", "normal", "false"], 
                 # ["verts", "texture", "normal", "false"]
@@ -363,7 +466,7 @@ def const_cfg_batch1(offset=[0,0,0]):
             "aug_loc": "false",            # Offset mesh from center of image?
             
             "meshes": [
-                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene17_leg.obj", 
+                "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene_21_other_leg.obj", 
                 "/home/itoh/ClipMesh/test_p_chair.obj"] ,
 
             "unit": "true",

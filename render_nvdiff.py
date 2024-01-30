@@ -357,7 +357,8 @@ def const_cfg(offset=[0,0,0]):
                 # "/home/itoh/ClipMesh/blue_no_seat.obj", 
                 # "/home/itoh/ClipMesh/blue_no_lega.obj"] ,
                 "/home/itoh/ClipMesh/3DCoMPaT-v2/loaders/3D/scene_21_other_leg.obj", 
-                "/home/itoh/ClipMesh/test_p_chair.obj"] ,
+                "/home/itoh/ClipMesh/test_p_chair.obj"
+                ] ,
 
             "unit": "true",
             # "unit": "false",
@@ -405,8 +406,8 @@ def const_cfg1(offset=[0,0,0]):
             "elev_beta": 1.0, #5.0,           # Beta parameter for Beta distribution for elevation sampling
             "elev_max": 1.0,           # Maximum elevation angle
             # "elev_max": 10.0,           # Maximum elevation angle
-            "azim_min": 0.0, #-360.0,         # Minimum azimuth angle
-            "azim_max": 0.0,          # Maximum azimuth angle
+            "azim_min": 0, #-360.0,         # Minimum azimuth angle
+            "azim_max": 0,          # Maximum azimuth angle
             # "azim_min": -90.0, #-360.0,         # Minimum azimuth angle
             # "azim_max": 90.0,          # Maximum azimuth angle
             "aug_loc": False,            # Offset mesh from center of image?
@@ -485,16 +486,21 @@ def const_cfg_batch1(offset=[0,0,0]):
     return cfg
 
 # meshの位置調整
-offset = [0.0, 0.0, 0.0]
+offset = [-0.44919328, 0.69333514, 0.046685487]
 
 # cfgを定義
-cfg = const_cfg(offset=offset)
+cfg = const_cfg1(offset=offset)
 
 meshes, subdiv, _, _ = nvdiff_meshes(cfg)
 cams = create_cams(cfg)
 
 
 render_meshes, _ =  nvdiff_rendermeshes(meshes, subdiv, cfg)
+
+# device = "cuda"
+# trans = [ -0.13361486856942295, 1.1179591708494914, -0.6688141052015142]
+# trans = torch.Tensor(trans)
+# render_meshes[1].v_pos = render_meshes[1].v_pos.clone().detach() + trans.to(device)
 
 # import ipdb; ipdb.set_trace()
 

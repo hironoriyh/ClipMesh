@@ -1,0 +1,4 @@
+Best trial number: 79
+Best x: 0.0
+Best y: 1.4230424777173065
+Best z: 0.0

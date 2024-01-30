@@ -1,0 +1,13 @@
+Input Text: A photo of unstable  detach chair
+
+Image File	Similarity Score
+scene27_unstable_penetrate.png	0.273681640625
+scene25_stable.png	0.251220703125
+117_unstable_penetrate.png	0.2496337890625
+scene29_stable.png	0.2469482421875
+scene24_stable.png	0.230224609375
+scene20_unstable_detatch.png	0.2257080078125
+scene22_unstable_penetrate.png	0.224853515625
+scene26_stable.png	0.21826171875
+scene21_unstable_detatch.png	0.2073974609375
+scene23_stable.png	0.207275390625

@@ -1,0 +1,13 @@
+Input Text: A photo of stable chair
+
+Image File	Similarity Score
+scene23_stable.png	0.30029296875
+scene26_stable.png	0.297119140625
+scene24_stable.png	0.280517578125
+scene29_stable.png	0.271240234375
+scene25_stable.png	0.268310546875
+scene27_unstable_penetrate.png	0.258544921875
+scene21_unstable_detach.png	0.2578125
+scene28_unstable_penetrate.png	0.256103515625
+scene22_unstable_penetrate.png	0.25439453125
+scene20_unstable_detach.png	0.25341796875

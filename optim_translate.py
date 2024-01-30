@@ -276,14 +276,18 @@ def opt_autograd(Nitr, directory):
 best_scores = {}  # 各区間の最高スコアを保存する辞書
 
 def optuna_objective(trial): ### for optuna
-    if trial.number == 0:
-        x =  trial.suggest_uniform('x', 2, 2)
-        y =  trial.suggest_uniform('y', 2, 2)
-        z =  trial.suggest_uniform('z', 2, 2)
-    else:
-        x = trial.suggest_uniform('x', min_y, max_y)
-        y = trial.suggest_uniform('y', min_y, max_y)
-        z = trial.suggest_uniform('z', min_y, max_y)
+    # if trial.number == 0:
+    #     x =  trial.suggest_uniform('x', 2, 2)
+    #     y =  trial.suggest_uniform('y', 2, 2)
+    #     z =  trial.suggest_uniform('z', 2, 2)
+    # else:
+    #     x = trial.suggest_uniform('x', min_y, max_y)
+    #     y = trial.suggest_uniform('y', min_y, max_y)
+    #     z = trial.suggest_uniform('z', min_y, max_y)
+    
+    x = trial.suggest_uniform('x', min_y, max_y)
+    y = trial.suggest_uniform('y', min_y, max_y)
+    z = trial.suggest_uniform('z', min_y, max_y)
 
     cfg = const_cfg()
     cfg1 =const_cfg1()
@@ -294,7 +298,7 @@ def optuna_objective(trial): ### for optuna
 
     images, overlap_score, center_score, kinetic_energy_score, image1= render_images_optuna_test(torch.tensor([x, y, z]), render_meshes, cams, cfg, cfg1, cams1) 
 
-    score = calc_loss(images) - kinetic_energy_score #- overlap_score - center_score - kinetic_energy_score  
+    score = calc_loss(images) #- overlap_score - center_score #- kinetic_energy_score  
 
     # if(trial.number%int(Nitr/10)==0):
     #     saveimgs(images, imgpath=os.path.join(directory, "%i.png"%trial.number))
@@ -334,11 +338,11 @@ args = parser.parse_args()
 
 model, preprocess = clip.load("ViT-B/32", device=device) # model = model.zero_grad() didnt work
 
-#good result
+#not good result
 # model.load_state_dict(torch.load("lr_1e-6.pth"))
 
 #test
-model.load_state_dict(torch.load("/home/itoh/ClipMesh/fine_tuned_crossentropy_contrastive_model.pth"))
+model.load_state_dict(torch.load("/home/itoh/ClipMesh/finetuning_models/all_3_1e-6/all_3.pth"))
 
 query = "A photo of stable chair"
 # query = "An image of black silk hat on top of a head"
@@ -348,8 +352,8 @@ query = "A photo of stable chair"
 text = clip.tokenize([query]).to(device)
 
 # set render, meshes
-Nitr = 200
-# Nitr = 100
+# Nitr = 200
+Nitr = 100
 batch_size = 12
 
 # renderer = construct_renderer(batch_size=batch_size)
@@ -391,6 +395,20 @@ if(args.optuna):
     best_trial = min(study.trials, key=lambda trial: trial.value)
     # トライアル番号をファイル名として使用して画像を保存
     saveimgs(images, imgpath=os.path.join(directory, f"best_trial_{best_trial.number}_loss_{best_trial.value:.4f}.png"))
+
+    # 最適なパラメータを取得
+    best_x = study.best_params["x"]
+    best_y = study.best_params["y"]
+    best_z = study.best_params["z"]
+    best_trial_number = best_trial.number
+
+     # テキストファイルに最適なパラメータを保存
+    result_file_path = os.path.join(directory, "best_params.txt")
+    with open(result_file_path, 'w') as result_file:
+        result_file.write(f"Best trial number: {best_trial_number}\n")
+        result_file.write(f"Best x: {best_x}\n")
+        result_file.write(f"Best y: {best_y}\n")
+        result_file.write(f"Best z: {best_z}\n")
 
 
     # プロットを作成

@@ -1,0 +1,13 @@
+Input Text: A photo of unstable penetrate chair
+
+Image File	Similarity Score
+scene27_unstable_penetrate.png	0.302978515625
+scene24_stable.png	0.301513671875
+scene28_unstable_penetrate.png	0.29248046875
+scene25_stable.png	0.2890625
+scene22_unstable_penetrate.png	0.283447265625
+scene20_unstable_detatch.png	0.27880859375
+scene21_unstable_detatch.png	0.27734375
+scene23_stable.png	0.273193359375
+scene26_stable.png	0.263427734375
+scene29_stable.png	0.253173828125
